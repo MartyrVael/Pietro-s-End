@@ -1,6 +1,7 @@
 #include"TreeWidget.h"
+#include"NodesWidget.h"
 
-TreeWidget::TreeWidget(Tree* t, QWidget* parent): tree_model(t), QWidget(parent){
+TreeWidget::TreeWidget(Tree* t, QWidget* parent): QWidget(parent), tree_model(t){
   QVBoxLayout* vbox = new QVBoxLayout(this);
   vbox->setAlignment(Qt::AlignTop | Qt::AlignCenter);
   QHBoxLayout* hbox = new QHBoxLayout();
@@ -9,7 +10,6 @@ TreeWidget::TreeWidget(Tree* t, QWidget* parent): tree_model(t), QWidget(parent)
   create_node = new QPushButton("Add node");
   create_sensor = new QPushButton("Add sensor");
   remove_node = new QPushButton("Delete node");
-  
   tree_view = new DTreeView();
   tree_view->setModel(tree_model);
 
@@ -27,6 +27,7 @@ TreeWidget::TreeWidget(Tree* t, QWidget* parent): tree_model(t), QWidget(parent)
   connect(create_node, &QPushButton::clicked, this, &TreeWidget::createNode);
   connect(create_sensor, &QPushButton::clicked, this, &TreeWidget::createSensor);
   connect(remove_node, &QPushButton::clicked, this, &TreeWidget::removeNode);
+  connect(tree_view->selectionModel(), &QItemSelectionModel::currentChanged, this, &TreeWidget::handleSelection);
 }
 
 void TreeWidget::createNode(){
@@ -35,6 +36,7 @@ void TreeWidget::createNode(){
   if(tree_model->leaf(parent)){
     QMessageBox::StandardButton warn;
     warn = QMessageBox::warning(this, "Invalid operation", "Cannot add a child to a sensor node", QMessageBox::Ok);
+    Q_UNUSED(warn);
     return;
   }
   
@@ -49,9 +51,9 @@ void TreeWidget::createSensor(){
   QModelIndex parent = tree_view->selectionModel()->currentIndex();
 
     if(tree_model->leaf(parent)){
-    QMessageBox::StandardButton warn;
-    warn = QMessageBox::warning(this, "Invalid operation", "Cannot add a child to a sensor node", QMessageBox::Ok);
-    return;
+      QMessageBox::StandardButton warn = QMessageBox::warning(this, "Invalid operation", "Cannot add a child to a sensor node", QMessageBox::Ok);
+      Q_UNUSED(warn);
+      return;
   }
 
   bool ok;
@@ -67,34 +69,23 @@ void TreeWidget::removeNode(){
   tree_model->removeNode(index);
 }
 
-/*
-void TreeWidget::createNode(){
-  QModelIndexList indexes = tree_view->selectionModel()->selectedIndexes();
-  if(indexes.empty()){
-      bool ok;
-      QString name = QInputDialog::getText(this, "Insert name", "Name:", QLineEdit::Normal, "", &ok);
-      if(ok)
-        tree_model->appendNode(name);
-      return;
+void TreeWidget::selectNode(TreeNode* node){
+  if(node == nullptr){
+    tree_view->selectionModel()->select(QItemSelection(), QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Current);
   }
-  if(indexes.count() == 1){
-      bool ok;
-      QString name = QInputDialog::getText(this, "Insert name", "Name:", QLineEdit::Normal, "", &ok);
-      if(ok)
-        tree_model->appendNode(name, indexes.at(0));
-      return;
-  }
-  QMessageBox::StandardButton warn;
-  warn = QMessageBox::warning(this, "Too many node selected", "Please select only one node.", QMessageBox::Ok);
-  return;
+  tree_view->selectionModel()->select(tree_model->getIndex(node), QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Current);
 }
 
-void TreeWidget::createSensor(){
-  QModelIndexList indexes = tree_view->selectionModel()->selectedIndexes();
-  if(indexes.empty()){
-    bool ok;
-    
+void TreeWidget::handleSelection(const QModelIndex& current, const QModelIndex& previous){
+  Q_UNUSED(previous);
+  if(current != QModelIndex() && tree_model->leaf(current)){
+    emit leafSelected(tree_model->getSensor(current));
   }
-
+  else
+    emit leafDeselected();
 }
-*/
+
+TreeNode* TreeWidget::selected() const{
+  QModelIndex index = tree_view->selectionModel()->currentIndex();
+  return tree_model->getNode(index);
+}

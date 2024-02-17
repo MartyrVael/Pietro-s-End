@@ -1,0 +1,9 @@
+<RCC>
+  <qresource prefix="/">
+    <file>Images/dust.svg</file>
+    <file>Images/wind.svg</file>
+    <file>Images/rain.svg</file>
+    <file>Images/humidity.svg</file>
+    <file>Images/temperature.svg</file>
+  </qresource>
+</RCC>
